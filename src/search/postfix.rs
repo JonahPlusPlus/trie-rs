@@ -1,47 +1,64 @@
-use crate::iter::{NodeIter, PairIter};
+use crate::iter::NodeIter;
 use crate::map::Trie;
+use crate::try_from::TryFromTokens;
 use louds_rs::LoudsNodeNum;
+
+use super::PostfixCollect;
 
 /// Iterates through all the postfixes of a matching label.
 #[derive(Debug, Clone)]
 pub struct PostfixIter<'a, Token, Value> {
-    trie: &'a Trie<Token, Value>,
-    queue: Vec<LoudsNodeNum>,
-    start: LoudsNodeNum,
+    pub(crate) trie: &'a Trie<Token, Value>,
+    pub(crate) queue: Vec<LoudsNodeNum>,
+    pub(crate) start: LoudsNodeNum,
+    pub(crate) last: LoudsNodeNum,
 }
 
-impl<'a, Token: Ord, Value> PostfixIter<'a, Token, Value> {
+impl<'t, Token: Ord, Value> PostfixIter<'t, Token, Value> {
     #[inline]
-    pub(crate) fn starts_with(trie: &'a Trie<Token, Value>, start: LoudsNodeNum) -> Self {
+    pub(crate) fn starts_with(trie: &'t Trie<Token, Value>, last: LoudsNodeNum) -> Self {
         Self {
             trie,
-            queue: vec![start],
+            queue: vec![last],
             start: LoudsNodeNum(1),
+            last,
         }
     }
 
     #[inline]
-    pub(crate) fn suffixes_of(trie: &'a Trie<Token, Value>, start: LoudsNodeNum) -> Self {
-        let mut queue: Vec<_> = trie.children_node_nums(start).collect();
+    pub(crate) fn suffixes_of(trie: &'t Trie<Token, Value>, last: LoudsNodeNum) -> Self {
+        let mut queue: Vec<_> = trie.children_node_nums(last).collect();
         queue.reverse();
-        Self { trie, queue, start }
+        Self { trie, queue, start: last, last }
     }
 
     #[inline]
-    pub(crate) fn empty(trie: &'a Trie<Token, Value>) -> Self {
+    pub(crate) fn empty(trie: &'t Trie<Token, Value>) -> Self {
         Self {
             trie,
             queue: Vec::new(),
             start: LoudsNodeNum(1),
+            last: LoudsNodeNum(1),
         }
     }
 
     /// Convert node iterators to `(label, value)` pairs.
-    pub fn pairs<L>(self) -> PairIter<Self, L>
-    where
-        Self: Sized,
+    pub fn pairs<L: TryFromTokens<Token>>(self) -> PostfixCollect<'t, Token, Value, L>
     {
-        PairIter::new(self)
+        PostfixCollect::from_iter(self)   
+    }
+
+    /// TODO: Docs
+    pub fn suffixes(self) -> Self {
+        let mut queue: Vec<_> = self.trie.children_node_nums(self.last).collect();
+        queue.reverse();
+
+        Self {
+            trie: self.trie,
+            queue,
+            start: self.last,
+            last: self.last,
+        }
     }
 }
 

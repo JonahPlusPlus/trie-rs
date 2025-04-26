@@ -99,80 +99,6 @@ impl<Token: Ord> Trie<Token> {
         self.0.starts_with(label).keys()
     }
 
-    /// Return all labels that start with `label`.
-    pub fn starts_with_labels<L>(
-        &self,
-        label: impl Label<Token>,
-    ) -> Labels<PostfixCollect<'_, Token, (), L>, L, Token>
-    where
-        Token: Clone,
-        L: TryFromTokens<Token>,
-    {
-        Labels::new(self.0.starts_with_pairs(label))
-    }
-
-    /// Return the suffixes of all entries that match `label`.
-    ///
-    /// # Arguments
-    /// * `label` - The label to search for.
-    ///
-    /// # Examples
-    /// In the following example we illustrate how to query the suffixes of a label.
-    ///
-    /// ```rust
-    /// use trie_rs::set::Trie;
-    ///
-    /// let trie = Trie::<u8>::from_iter(["a", "app", "apple", "better", "application"]);
-    ///
-    /// let results: Vec<_> = trie.suffixes_of("application").labels::<String>().collect::<Result<_, _>>().unwrap();
-    ///
-    /// assert!(results.is_empty());
-    ///
-    /// let results: Vec<_> = trie.suffixes_of("app").labels::<String>().collect::<Result<_, _>>().unwrap();
-    ///
-    /// assert_eq!(results, vec!["le", "lication"]);
-    ///
-    /// ```
-    pub fn suffixes_of(&self, label: impl Label<Token>) -> Keys<PostfixIter<'_, Token, ()>>
-    where
-        Token: Clone,
-    {
-        self.0.suffixes_of(label).keys()
-    }
-
-    /// Return the suffixes of all entries that match `label` as labels.
-    ///
-    /// # Arguments
-    /// * `label` - The label to search for.
-    ///
-    /// # Examples
-    /// In the following example we illustrate how to query the suffixes of a label.
-    ///
-    /// ```rust
-    /// use trie_rs::set::Trie;
-    ///
-    /// let trie = Trie::<u8>::from_iter(["a", "app", "apple", "better", "application"]);
-    ///
-    /// let results: Vec<_> = trie.suffixes_of("application").labels::<String>().collect::<Result<_, _>>().unwrap();
-    ///
-    /// assert!(results.is_empty());
-    ///
-    /// let results: Vec<_> = trie.suffixes_of("app").labels::<String>().collect::<Result<_, _>>().unwrap();
-    ///
-    /// assert_eq!(results, vec!["le", "lication"]);
-    ///
-    /// ```
-    pub fn suffixes_of_labels<L>(
-        &self,
-        label: impl Label<Token>,
-    ) -> Labels<PostfixCollect<'_, Token, (), L>, L, Token>
-    where
-        Token: Clone,
-        L: TryFromTokens<Token>,
-    {
-        Labels::new(self.0.suffixes_of_pairs(label))
-    }
-
     /// Returns an iterator across all keys in the trie.
     ///
     /// # Examples
@@ -289,7 +215,7 @@ mod search_tests {
         let trie = build_trie();
         assert!(!trie.is_exact(""));
         let _ = trie.starts_with("").next();
-        let _ = trie.suffixes_of("").next();
+        let _ = trie.starts_with("").suffixes().next();
         let _ = trie.prefixes_of("").next();
     }
 

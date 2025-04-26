@@ -1,4 +1,4 @@
-use crate::try_from::TryFromTokens;
+use crate::{search::PostfixIter, try_from::TryFromTokens};
 
 use super::{KeyIter, NodeIter, TokenIter};
 
@@ -23,6 +23,13 @@ where
     {
         self.0
             .map(|iter| L::try_from_reverse_tokens(TokenIter::new(iter)))
+    }
+}
+
+impl<'t, Token: 't> Keys<PostfixIter<'t, Token, ()>> {
+    /// Foo
+    pub fn suffixes() {
+
     }
 }
 

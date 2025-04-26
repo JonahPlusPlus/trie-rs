@@ -2,7 +2,9 @@ use std::marker::PhantomData;
 
 use louds_rs::LoudsNodeNum;
 
-use crate::{label::Label, map::Trie, try_from::TryFromTokens};
+use crate::{iter::NodeIter, label::Label, map::Trie, try_from::TryFromTokens};
+
+use super::PostfixIter;
 
 #[derive(Debug, Clone)]
 /// Iterates through all the postfixes of a matching query.
@@ -18,6 +20,44 @@ impl<'a, Token: Ord, Value, L> PostfixCollect<'a, Token, Value, L>
 where
     L: TryFromTokens<Token>,
 {
+    pub(crate) fn from_iter(iter: PostfixIter<'a, Token, Value>) -> Self {
+        let mut root = iter.start;
+        let mut children_node_nums = Vec::new(); // reuse allocated space
+        let mut buffer = vec![];
+        let mut len = 0;
+
+        let node_iter = NodeIter {
+            trie: iter.trie,
+            start: iter.start,
+            end: iter.last,
+        };
+
+        for token in node_iter.map(|n| iter.trie.token(n.node_num)) {
+            len += 1;
+            children_node_nums.clear();
+            children_node_nums.extend(iter.trie.children_node_nums(root));
+            let res = iter.trie.bin_search_by_children_labels(&token, &children_node_nums[..]);
+
+            let Ok(j) = res else {
+                return Self::empty(iter.trie);
+            };
+
+            root = children_node_nums[j];
+            buffer.push(iter.trie.token(root));
+        }
+
+        let mut queue: Vec<_> = iter.trie.children_node_nums(iter.start).map(|n| (0, n)).collect();
+        queue.reverse();
+
+        Self {
+            trie: iter.trie,
+            queue: vec![(0, root)],
+            buffer,
+            start: len,
+            _collector: PhantomData,
+        }
+    }
+
     #[inline]
     pub(crate) fn starts_with(trie: &'a Trie<Token, Value>, label: impl Label<Token>) -> Self {
         let mut root = LoudsNodeNum(1);

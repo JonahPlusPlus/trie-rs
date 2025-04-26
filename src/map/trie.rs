@@ -1,7 +1,7 @@
 //! A trie map stores a value with each word or key.
 use crate::inc_search::IncSearch;
 use crate::label::{Label, LabelKind};
-use crate::search::{PostfixCollect, PostfixIter, PrefixCollect, PrefixIter};
+use crate::search::{PostfixIter, PrefixCollect, PrefixIter};
 use crate::try_from::TryFromTokens;
 use louds_rs::{AncestorNodeIter, ChildNodeIter, Louds, LoudsNodeNum};
 use std::iter::FromIterator;
@@ -101,38 +101,6 @@ impl<Token: Ord, Value> Trie<Token, Value> {
         PrefixCollect::new(self, label)
     }
 
-    /// Returns the exactly matching suffixes that follow after this node.
-    ///
-    /// e.g. "app" → "le" node (as in "apple")
-    ///
-    /// Strips the label's node from the results; to include this node as a prefix, see [`Self::starts_with`].
-    pub fn suffixes_of(&self, label: impl Label<Token>) -> PostfixIter<'_, Token, Value>
-    where
-        Token: Clone,
-    {
-        self.get(label)
-            .map(|n| PostfixIter::suffixes_of(n.trie, n.node_num))
-            .unwrap_or_else(|| PostfixIter::empty(self))
-    }
-
-    /// Returns the exactly matching suffixes that follow after this node as `(label, value)` pairs.
-    ///
-    /// e.g. "app" → ("le", value) (as in "apple")
-    ///
-    /// Strips the label from the results; to include this node as a prefix, see [`Self::starts_with_pairs`].
-    pub fn suffixes_of_pairs<L>(
-        &self,
-        label: impl Label<Token>,
-    ) -> PostfixCollect<'_, Token, Value, L>
-    where
-        Token: Clone,
-        L: TryFromTokens<Token>,
-    {
-        self.get(label)
-            .map(|n| PostfixCollect::suffixes_of(self, n.node_num))
-            .unwrap_or_else(|| PostfixCollect::empty(self))
-    }
-
     /// Returns the exact match nodes that follow after this node.
     ///
     /// e.g. "app" → "apple" node
@@ -143,20 +111,6 @@ impl<Token: Ord, Value> Trie<Token, Value> {
         self.get(label)
             .map(|n| n.starts_with())
             .unwrap_or_else(|| PostfixIter::empty(self))
-    }
-
-    /// Returns the exact match `(label, value)` pairs that follow after this node.
-    ///
-    /// e.g. "app" → ("apple", value)
-    pub fn starts_with_pairs<L>(
-        &self,
-        label: impl Label<Token>,
-    ) -> PostfixCollect<'_, Token, Value, L>
-    where
-        Token: Clone,
-        L: TryFromTokens<Token>,
-    {
-        PostfixCollect::starts_with(self, label)
     }
 
     /// Returns an iterator across all keys in the trie.
@@ -386,7 +340,7 @@ mod search_tests {
         let trie = build_trie();
         assert!(trie.get_value("").is_none());
         let _ = trie.starts_with("").next();
-        let _ = trie.suffixes_of("").next();
+        let _ = trie.starts_with("").suffixes().next();
         let _ = trie.prefixes_of("").next();
     }
 
@@ -585,7 +539,7 @@ mod search_tests {
                 fn $name() {
                     let (label, expected_results) = $value;
                     let trie = super::build_trie();
-                    let results: Vec<(String, &u8)> = trie.starts_with_pairs::<String>(label).collect::<Result<_, _>>().unwrap();
+                    let results: Vec<(String, &u8)> = trie.starts_with(label).pairs::<String>().collect::<Result<_, _>>().unwrap();
                     let expected_results: Vec<(String, &u8)> = expected_results.iter().map(|s| (s.0.to_string(), &s.1)).collect();
                     assert_eq!(results, expected_results);
                 }
@@ -640,7 +594,7 @@ mod search_tests {
                 fn $name() {
                     let (label, expected_results) = $value;
                     let trie = super::build_trie();
-                    let results: Vec<(String, &u8)> = trie.suffixes_of(label).pairs::<String>().filter_map(Result::ok).collect();
+                    let results: Vec<(String, &u8)> = trie.starts_with(label).suffixes().pairs::<String>().filter_map(Result::ok).collect();
                     let expected_results: Vec<(String, &u8)> = expected_results.iter().map(|s| (s.0.to_string(), &s.1)).collect();
                     assert_eq!(results, expected_results);
                 }
@@ -660,7 +614,7 @@ mod search_tests {
         }
     }
 
-    mod suffixes_of_pairs_tests {
+    mod suffixes_pairs_tests {
         macro_rules! parameterized_tests {
             ($($name:ident: $value:expr,)*) => {
             $(
@@ -668,7 +622,7 @@ mod search_tests {
                 fn $name() {
                     let (label, expected_results) = $value;
                     let trie = super::build_trie();
-                    let results: Vec<(String, &u8)> = trie.suffixes_of_pairs::<String>(label).filter_map(Result::ok).collect();
+                    let results: Vec<(String, &u8)> = trie.starts_with(label).suffixes().pairs::<String>().filter_map(Result::ok).collect();
                     let expected_results: Vec<(String, &u8)> = expected_results.iter().map(|s| (s.0.to_string(), &s.1)).collect();
                     assert_eq!(results, expected_results);
                 }
@@ -696,7 +650,7 @@ mod search_tests {
                 fn $name() {
                     let (label, expected_results) = $value;
                     let trie = super::build_trie2();
-                    let results: Vec<(String, &u8)> = trie.suffixes_of(label).pairs::<String>().collect();
+                    let results: Vec<(String, &u8)> = trie.starts_with(label).suffixes().pairs::<String>().collect();
                     let expected_results: Vec<(String, &u8)> = expected_results.iter().map(|s| (s.0.to_string(), &s.1)).collect();
                     assert_eq!(results, expected_results);
                 }
